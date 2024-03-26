@@ -30,55 +30,28 @@
       text="value: Start; color: #000; align: center"
     ></a-entity>
 
-    <a-text
-      id="cameraOrientationText"
-      position="0 1 -3"
-      color="white"
-      align="center"
-      scale="0.5 0.5 0.5"
-      value="Camera Orientation: "
-    ></a-text>
+    <a-entity
+      id="gltfModel"
+      scale="0.05 0.05 0.05"
+      gltf-model="models/scene.gltf"
+      visible="false"
+    ></a-entity>
 
     <div id="overlay"></div>
   </a-scene>
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      let markerLocked = false;
-
       const marker = document.querySelector('a-marker');
       const startButton = document.querySelector('#startButton');
-      const camera = document.querySelector('[camera]');
       const overlay = document.querySelector('#overlay');
-      const cameraOrientationText = document.querySelector('#cameraOrientationText');
+      const gltfModel = document.querySelector('#gltfModel');
+      let markerPosition;
 
       function startTracking() {
-        markerLocked = true;
         overlay.style.display = 'none';
         startButton.setAttribute('visible', 'false');
       }
-
-      function updateCameraOrientation() {
-        if (!markerLocked) return;
-
-        const cameraMatrix = camera.object3D.matrixWorld;
-        const markerMatrix = marker.object3D.matrixWorld;
-        const relativeMatrix = new THREE.Matrix4().getInverse(markerMatrix).multiply(cameraMatrix);
-        const rotation = new THREE.Euler().setFromRotationMatrix(relativeMatrix);
-        const rotationDeg = {
-          x: THREE.MathUtils.radToDeg(rotation.x),
-          y: THREE.MathUtils.radToDeg(rotation.y),
-          z: THREE.MathUtils.radToDeg(rotation.z)
-        };
-
-        cameraOrientationText.setAttribute('value', `Camera Orientation:\nX: ${rotationDeg.x.toFixed(2)}°\nY: ${rotationDeg.y.toFixed(2)}°\nZ: ${rotationDeg.z.toFixed(2)}°`);
-      }
-
-      function render() {
-        updateCameraOrientation();
-        requestAnimationFrame(render);
-      }
-      render();
 
       marker.addEventListener('markerFound', () => {
         overlay.style.display = 'block';
@@ -86,27 +59,24 @@
       });
 
       marker.addEventListener('markerLost', () => {
-        markerLocked = false;
         overlay.style.display = 'none';
         startButton.setAttribute('visible', 'false');
       });
 
-      overlay.addEventListener('click', startTracking);
+      overlay.addEventListener('click', () => {
+        // Record the position of the marker
+        markerPosition = marker.object3D.position.clone();
+        startTracking();
+      });
 
       startButton.addEventListener('click', () => {
-        const cameraOrientation = cameraOrientationText.getAttribute('value');
-        const file = new Blob([cameraOrientation], { type: 'text/plain' });
-        const fileURL = URL.createObjectURL(file);
-
-        const tempAnchor = document.createElement('a');
-        tempAnchor.href = fileURL;
-        tempAnchor.setAttribute('download', 'camera_orientation.txt');
-        tempAnchor.style.display = 'none';
-        document.body.appendChild(tempAnchor);
-
-        tempAnchor.click();
-
-        document.body.removeChild(tempAnchor);
+        if (markerPosition) {
+          // Set the position of the GLTF model to the recorded position
+          gltfModel.setAttribute('position', `${markerPosition.x} ${markerPosition.y} ${markerPosition.z}`);
+          gltfModel.setAttribute('visible', 'true');
+        } else {
+          alert('Please click the button only after placing the marker.');
+        }
       });
     });
   </script>
